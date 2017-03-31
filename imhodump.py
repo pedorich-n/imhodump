@@ -50,12 +50,13 @@ class ImhoDumper():
         self.subject = subject
         self.output_filename = 'imho_rates_%s_%s.json' % (subject, user_id)
 
-    def get_rates(self, json, rating):
+    def get_rates(self, json):
         items = json['user_rates']['content_rated']
         for item in items:
             heading = item['title']
             details_url = item['url']
             year = item['year']
+            rating = item['rate']
 
             logger.info('Обрабатываем "%s" ...' % heading)
 
@@ -95,13 +96,12 @@ class ImhoDumper():
 
             yield item_data
 
-    def format_url(self, user_id, subject, rating, page=1):
-        return self.URL_RATES_TPL % {'user_id': self.user_id, 'subject': self.subject, 'rating': rating, 'page': page}
+    def format_url(self, user_id, subject, page=1):
+        return self.URL_RATES_TPL % {'user_id': self.user_id, 'subject': self.subject, 'page': page}
 
-    def process_url(self, page_url, rating, page, recursive=False):
+    def process_url(self, page_url, page, recursive=False):
 
         logger.info('Обрабатывается страница %s ...' % page_url)
-        logger.debug('Рейтинг: %s' % rating)
 
         req = requests.get(page_url, headers={'Accept':'application/json'})
         try:
@@ -112,14 +112,14 @@ class ImhoDumper():
         if len(json) == 0 or len(json['user_rates']['content_rated']) == 0:
             return
 
-        next_page_url = self.format_url(self.user_id, self.subject, rating, page + 1)
+        next_page_url = self.format_url(self.user_id, self.subject, page + 1)
 
         logger.info('Следующая страница: %s' % next_page_url)
 
-        yield from self.get_rates(json, rating)
+        yield from self.get_rates(json)
 
         if recursive and next_page_url is not None:
-            yield from self.process_url(next_page_url, rating, page + 1, recursive)
+            yield from self.process_url(next_page_url, page + 1, recursive)
 
     def dump_to_file(self, filename, existing_items=None, start_from_rating=1):
         logger.info('Собираем оценки пользователя %s в файл %s' % (self.user_id, filename))
@@ -129,12 +129,11 @@ class ImhoDumper():
             try:
                 if existing_items:
                     f.write('%s,' % dumps(list(existing_items.values()), indent=4).strip('[]'))
-                for rating in range(start_from_rating, 11):
-                    for item_data in self.process_url(self.format_url(self.user_id, self.subject, rating), rating, 1, True):
-                        if not existing_items or item_data['details_url'] not in existing_items:
-                            line = '%s,' % dumps(item_data, indent=4)
-                            f.write(line)
-                            f.flush()
+                for item_data in self.process_url(self.format_url(self.user_id, self.subject), 1, True):
+                    if not existing_items or item_data['details_url'] not in existing_items:
+                        line = '%s,' % dumps(item_data, indent=4)
+                        f.write(line)
+                        f.flush()
             except BaseException as e:
                 logger.info("Failed: %s" % e)
                 logger.info(traceback.format_exc())
