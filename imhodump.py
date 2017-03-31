@@ -42,7 +42,7 @@ class ImhoDumper():
         SUBJECT_SERIES: [TARGET_KINOPOISK]
     }
 
-    URL_RATES_TPL = 'http://%(user_id)s.imhonet.ru/content/%(subject)s/rates/%(rating)s/?page=%(page)s'
+    URL_RATES_TPL = 'http://user.imhonet.ru/%(user_id)s/content/%(subject)s/rates/?page=%(page)s'
     START_FROM_RATING = 1
 
     def __init__(self, user_id, subject):
