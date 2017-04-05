@@ -12,6 +12,7 @@ from json import dumps, loads
 from math import ceil
 from collections import OrderedDict
 from urllib.parse import quote
+from bs4 import BeautifulSoup
 
 
 logging.basicConfig()
@@ -104,8 +105,17 @@ class ImhoDumper():
         logger.info('Обрабатывается страница %s ...' % page_url)
 
         req = requests.get(page_url, headers={'Accept':'application/json'})
+        if req.status_code > 201:
+           return
+
+        soup = BeautifulSoup(req.text, "lxml")
+
+        script = soup(["script"])[0].string
+        data = script.split("window.__app_state__ = ")[1][:-1]
+        jsonData = loads(data)
+
         try:
-            json = req.json()
+            json = jsonData["data"]["content"]
         except:
             return
 
@@ -131,7 +141,7 @@ class ImhoDumper():
                     f.write('%s,' % dumps(list(existing_items.values()), indent=4).strip('[]'))
                 for item_data in self.process_url(self.format_url(self.user_id, self.subject), 1, True):
                     if not existing_items or item_data['details_url'] not in existing_items:
-                        line = '%s,' % dumps(item_data, indent=4)
+                        line = '%s,' % dumps(item_data, ensure_ascii=False, indent=4)
                         f.write(line)
                         f.flush()
             except BaseException as e:
@@ -148,7 +158,7 @@ class ImhoDumper():
                 text = f.read()
                 f.close()
             try:
-                data = loads(data, object_pairs_hook=OrderedDict)
+                data = loads(text, object_pairs_hook=OrderedDict)
             except:
                 logger.info("Failed loading json")
                 return None
@@ -227,7 +237,7 @@ class ImhoDumper():
             <div class="description">
                 <div class="titles">
                     <div class="title_ru">
-                        <label><input type="checkbox"> %(title_ru)s</label>
+                        <label>%(title_ru)s</label>
                     </div>
                     <div class="title_orig">%(title_orig)s</div>
                 </div>
