@@ -62,19 +62,30 @@ class ImhoDumper():
             logger.info('Обрабатываем "%s" ...' % heading)
 
             req_details = requests.get(details_url)
-            html_details = etree.HTML(req_details.text)
+            if req_details.status_code > 201:
+                return
+
+            soup = BeautifulSoup(req_details.text, "lxml")
+
+            script = soup.find("script", {"id": "appState"}).string
+            data = script.split("window.__app_state__ = ")[1][:-1]
+            jsonData = loads(data)
+            jsonData = jsonData["data"]["content"]["content"]
+
 
             try:
-                title_orig = html_details.xpath("//div[@class='m-elementprimary-language']")[0].text.strip()
+                title_orig = jsonData["title_original"]
             except (IndexError, AttributeError):
-                logger.debug('** Название на языке оригинала не заявлено, наверное наше кино')
+                logger.debug('** Название на языке оригинала не заявлено')
                 title_orig = None
 
-            try:
-                author = html_details.xpath("//a[@class='underline m-value']/span")[0].text.strip()
-            except:
-                logger.info('** Автор не найден')
-                author = None
+            if self.subject == 'books':
+                html_details = etree.HTML(req_details.text)
+                try:
+                    author = html_details.xpath("//a[@class='underline m-value']/span")[0].text.strip()
+                except:
+                    logger.info('** Автор не найден')
+                    author = None
 
             logger.debug('Оригинальное название: %s' % title_orig)
             logger.debug('Год: %s' % year)
@@ -106,11 +117,11 @@ class ImhoDumper():
 
         req = requests.get(page_url, headers={'Accept':'application/json'})
         if req.status_code > 201:
-           return
+            return
 
         soup = BeautifulSoup(req.text, "lxml")
 
-        script = soup(["script"])[0].string
+        script = soup.find("script", {"id": "appState"}).string
         data = script.split("window.__app_state__ = ")[1][:-1]
         jsonData = loads(data)
 
