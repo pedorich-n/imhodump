@@ -67,25 +67,31 @@ class ImhoDumper():
 
             soup = BeautifulSoup(req_details.text, "lxml")
 
-            script = soup.find("script", {"id": "appState"}).string
-            data = script.split("window.__app_state__ = ")[1][:-1]
-            jsonData = loads(data)
-            jsonData = jsonData["data"]["content"]["content"]
+            if self.subject == 'films':
+                script = soup.find("script", {"id": "appState"}).string
+                data = script.split("window.__app_state__ = ")[1][:-1]
+                jsonData = loads(data)["data"]["content"]["content"]
 
-
-            try:
-                title_orig = jsonData["title_original"]
-            except (IndexError, AttributeError):
-                logger.debug('** Название на языке оригинала не заявлено')
-                title_orig = None
-
-            if self.subject == 'books':
-                html_details = etree.HTML(req_details.text)
                 try:
-                    author = html_details.xpath("//a[@class='underline m-value']/span")[0].text.strip()
+                    title_orig = jsonData["title_original"]
+                except (IndexError, AttributeError):
+                    logger.debug('** Название на языке оригинала не заявлено')
+                    title_orig = None
+
+            elif self.subject == 'books':
+                try:
+                    title_orig = soup.find("div",{"class":"m-elementprimary-language"}).text
+                except (IndexError, AttributeError):
+                    logger.debug('** Название на языке оригинала не заявлено')
+                    title_orig = None
+
+                try:
+                    author = soup.find("div", {"class":"m_row is-actors"}).find("a", {"class":"m_value"}).text
                 except:
                     logger.info('** Автор не найден')
                     author = None
+
+
 
             logger.debug('Оригинальное название: %s' % title_orig)
             logger.debug('Год: %s' % year)
@@ -149,7 +155,7 @@ class ImhoDumper():
             f.write('[')
             try:
                 if existing_items:
-                    f.write('%s,' % dumps(list(existing_items.values()), indent=4).strip('[]'))
+                    f.write('%s,' % dumps(list(existing_items.values()), ensure_ascii=False, indent=4).strip('[]'))
                 for item_data in self.process_url(self.format_url(self.user_id, self.subject), 1, True):
                     if not existing_items or item_data['details_url'] not in existing_items:
                         line = '%s,' % dumps(item_data, ensure_ascii=False, indent=4)
