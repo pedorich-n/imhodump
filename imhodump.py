@@ -304,7 +304,7 @@ class ImhoDumper():
             f.write(html_base % {'subject': self.subject, 'rates_num': len(records), 'rating_rows': '\n'.join(rating_rows)})
 
     def backup_json(self, filename):
-        target_filename = '%s.bak%s' % (filename, datetime.datetime.isoformat(datetime.datetime.now()))
+        target_filename = '%s.bak%s' % (filename, datetime.isoformat(datetime.now()))
         logger.info('Делаем резервную копию файла с оценками: %s' % target_filename)
         shutil.copy(filename, target_filename)
 
