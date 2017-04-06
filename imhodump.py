@@ -13,6 +13,7 @@ from math import ceil
 from collections import OrderedDict
 from urllib.parse import quote
 from bs4 import BeautifulSoup
+from datetime import datetime
 
 
 logging.basicConfig()
@@ -31,14 +32,16 @@ class ImhoDumper():
 
     TARGET_GOODREADS = 'Goodreads'
     TARGET_KINOPOISK = 'КиноПоиск'
+    TARGET_LIVELIB = 'Livelib'
     TARGETS = {
         TARGET_GOODREADS: 'https://www.goodreads.com/search?utf8=%E2%9C%93&q={term}&search_type=books',
+        TARGET_LIVELIB: 'http://www.livelib.ru/find/{term}/all',
         TARGET_KINOPOISK: 'http://www.kinopoisk.ru/index.php?first=no&what=&kp_query={term}',
     }
 
     SUBJECTS = {
         SUBJECT_FILMS: [TARGET_KINOPOISK],
-        SUBJECT_BOOKS: [TARGET_GOODREADS],
+        SUBJECT_BOOKS: [TARGET_GOODREADS, TARGET_LIVELIB],
         SUBJECT_GAMES: [],
         SUBJECT_SERIES: [TARGET_KINOPOISK]
     }
@@ -104,11 +107,13 @@ class ImhoDumper():
                 'title_orig': title_orig,
                 'rating': rating,
                 'year': year,
+                'rate_date': datetime.utcfromtimestamp(int(item['rate_date'])).strftime('%Y-%m-%d'),
                 'details_url': details_url
             }
 
             if self.subject == 'films':
                 item_data['country'] = ','.join(item['countries'])
+                item_data['author'] = ""
             elif self.subject == 'books':
                 item_data['author'] = author
 
@@ -245,16 +250,21 @@ class ImhoDumper():
         html_rating_row = '''
         <div class="rate_block">
             <div class="info">
-                <div class="year">%(year)s</div>
+                <div class="year">%(rate_date)s</div>
                 <div class="rating">
                     <span class="current">%(rating)s</span><span class="total">/10</span>
                     <span class="current">%(rating_five)s</span><span class="total">/5</span>
                 </div>
             </div>
             <div class="description">
+                <div>
+                    <label>%(author)s</label>
+                </div>
                 <div class="titles">
-                    <div class="title_ru">
-                        <label>%(title_ru)s</label>
+                    <div>
+                        <label>
+                            <span class="title_ru"><input type="checkbox"> %(title_ru)s</span> <span class="year"> (%(year)s)</span>
+                        </label>
                     </div>
                     <div class="title_orig">%(title_orig)s</div>
                 </div>
